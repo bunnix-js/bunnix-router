@@ -1,0 +1,18 @@
+docs:
+  - title: Router
+    items:
+      - title: Router Overview
+        url: /bunnix-router/router
+      - title: Routes
+        url: /bunnix-router/router-routes
+      - title: Layouts
+        url: /bunnix-router/router-layouts
+      - title: Navigation
+        url: /bunnix-router/router-navigation
+      - title: Migration
+        url: /bunnix-router/router-migration
+
+  - title: Examples
+    items:
+      - title: Router Layout
+        url: /bunnix-router/examples-router-layout
