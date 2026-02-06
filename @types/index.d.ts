@@ -1,148 +1,290 @@
 /**
- * Navigation object injected into components and layouts.
+ * Generic renderable value accepted by Bunnix components.
  */
-export interface Navigation {
-    /** Navigates to a new path. */
-    push(path: string | RouteDefinition | RouteSpecial): void;
-    /** Replaces current history entry. */
-    replace(path: string | RouteDefinition | RouteSpecial): void;
-    /** Navigates back or to fallback. */
-    back(fallback?: string | RouteDefinition | RouteSpecial): void;
-    /** Current resolved path. */
+export type Renderable = unknown;
+
+/**
+ * Dynamic params captured from route patterns like `/user/:id`.
+ */
+export type RouteParams = Record<string, string>;
+
+/**
+ * Minimal read-only state contract from `@bunnix/core`.
+ */
+export interface ReadonlyState<T> {
+    get(): T;
+    subscribe(cb: (value: T) => void): () => void;
+    map<U>(fn: (value: T) => U): ReadonlyState<U>;
+}
+
+/**
+ * Router cookie API available on context.
+ */
+export interface RouterCookies {
+    get(key: string): string | null;
+    set(key: string, value: unknown): void;
+    remove(key: string): void;
+}
+
+/**
+ * Router context shape injected into policies/components/layouts.
+ */
+export interface RouterContextBase {
+    cookies: RouterCookies;
+    set(key: string, value: unknown): void;
+    remove(...keys: string[]): void;
+    [key: string]: unknown;
+}
+
+/**
+ * Typed router context enriched with app-specific keys.
+ */
+export type RouterContext<T extends Record<string, unknown> = Record<string, unknown>> =
+    T & RouterContextBase;
+
+/**
+ * State value exposed by layout navigation state.
+ */
+export interface NavigationStateValue {
     path: string;
-    /** Current route params. */
-    params: Record<string, string>;
-    /** Group navigation info. */
-    group: {
-        rootPath: string;
-    };
-    /** Reactive state containing the current path string. */
-    currentPath: any;
-    /** The base path of the current navigation stack. */
+    params: RouteParams;
+    currentGroup: string;
+}
+
+/**
+ * Special route builder (e.g. `Route.notFound`, `Route.forbidden`).
+ */
+export interface RouteSpecial {
+    (component: RouteComponent | Renderable): RouteDefinition;
+    path: string;
+}
+
+/**
+ * Acceptable navigation target values.
+ */
+export type PathTarget = string | Pick<RouteDefinition, 'path'> | RouteSpecial;
+
+/**
+ * Shared navigation actions.
+ */
+export interface NavigationActions {
+    push(path: PathTarget): void;
+    replace(path: PathTarget): void;
+    back(fallback?: PathTarget): void;
     rootPath: string;
 }
 
 /**
- * Route rule builder.
+ * Unwrapped navigation object injected into matched route components and policies.
  */
+export interface Navigation extends NavigationActions, NavigationStateValue {}
+
 /**
- * Fluent API for defining routes.
+ * Reactive navigation state injected into layout components.
  */
-export interface RouteDefinition {
+export interface NavigationState extends NavigationActions, ReadonlyState<NavigationStateValue> {}
+
+/**
+ * Props injected into matched route components.
+ */
+export type RouteComponentProps<
+    C extends RouterContext = RouterContext,
+    P extends RouteParams = RouteParams
+> = P & {
+    navigation: Navigation;
+    context: C;
+    [key: string]: unknown;
+};
+
+/**
+ * Route component function type.
+ */
+export type RouteComponent<
+    C extends RouterContext = RouterContext,
+    P extends RouteParams = RouteParams
+> = (props: RouteComponentProps<C, P>) => Renderable;
+
+/**
+ * Props injected into layout components.
+ */
+export type LayoutProps<
+    C extends RouterContext = RouterContext,
+    P extends RouteParams = RouteParams
+> = P & {
+    routerOutlet: () => Renderable;
+    navigation: NavigationState;
+    context: C;
+    [key: string]: unknown;
+};
+
+/**
+ * Layout component function type.
+ */
+export type LayoutComponent<
+    C extends RouterContext = RouterContext,
+    P extends RouteParams = RouteParams
+> = (props: LayoutProps<C, P>) => Renderable;
+
+/**
+ * Route definition object.
+ */
+export interface RouteDefinition<C extends RouterContext = RouterContext> {
     type: 'Route';
     kind: 'normal' | 'notFound' | 'forbidden';
     path: string;
-    component?: any;
-    render?: any;
+    component?: RouteComponent<C> | Renderable;
+    render?: RouteComponent<C> | Renderable;
 }
 
-export interface RouteSpecial {
-    (component: any): RouteDefinition;
-    path: string;
-}
-
-export const Route: {
-    (path: string, component?: any): RouteDefinition;
-    (props: RouteProps, children?: any[]): RouteDefinition;
-    root(component?: any): RouteDefinition;
-    /** Define a fallback rule. */
+/**
+ * `Route` factory API.
+ */
+export interface RouteFactory {
+    <C extends RouterContext = RouterContext>(
+        path: string,
+        component?: RouteComponent<C> | Renderable
+    ): RouteDefinition<C>;
+    <C extends RouterContext = RouterContext>(
+        props: RouteProps<C>,
+        children?: unknown[]
+    ): RouteDefinition<C>;
+    root<C extends RouterContext = RouterContext>(
+        component?: RouteComponent<C> | Renderable
+    ): RouteDefinition<C>;
     notFound: RouteSpecial;
-    /** Define a forbidden rule. */
     forbidden: RouteSpecial;
     _NOT_FOUND: string;
     _FORBIDDEN: string;
-};
-
-export interface RoutePolicyDefinition {
-    type: 'RoutePolicy';
-    handler: (params: { context: any; navigation: Navigation }) => void;
 }
 
-export type RoutePolicyHandler = (params: { context: any; navigation: Navigation }) => void;
-export type RoutePolicyLike = RoutePolicyDefinition | RoutePolicyHandler;
+export const Route: RouteFactory;
 
-export interface RouteGroupDefinition {
+/**
+ * Route policy types.
+ */
+export interface RoutePolicyDefinition<C extends RouterContext = RouterContext> {
+    type: 'RoutePolicy';
+    handler: RoutePolicyHandler<C>;
+}
+
+export type RoutePolicyHandler<C extends RouterContext = RouterContext> = (params: {
+    context: C;
+    navigation: Navigation;
+}) => void;
+
+export type RoutePolicyLike<C extends RouterContext = RouterContext> =
+    | RoutePolicyDefinition<C>
+    | RoutePolicyHandler<C>;
+
+/**
+ * Route group definition.
+ */
+export interface RouteGroupDefinition<C extends RouterContext = RouterContext> {
     type: 'RouteGroup';
     rootPath: string;
-    routes: RouteDefinition[];
-    policies: RoutePolicyLike[];
-    layout?: (props: {
-        routerOutlet: () => any;
-        navigation: Navigation;
-        context?: any;
-        [key: string]: any;
-    }) => any;
-    component?: any;
+    routes: RouteDefinition<C>[];
+    policies: RoutePolicyLike<C>[];
+    layout?: LayoutComponent<C> | null;
+    component?: RouteComponent<C> | Renderable;
     isRoot?: boolean;
 }
 
-export interface RouterRootProps {
-    context?: any;
-    children?: any;
+export type RouterTreeEntry<C extends RouterContext = RouterContext> =
+    | RouteDefinition<C>
+    | RouteGroupDefinition<C>;
+
+export interface RouterRootProps<C extends RouterContext = RouterContext> {
+    context?: C;
+    children?: unknown;
 }
 
-export interface RouteGroupProps {
+export interface RouteGroupProps<C extends RouterContext = RouterContext> {
     root?: boolean;
     rootPath?: string;
-    layout?: (props: any) => any;
-    policies?: RoutePolicyLike[];
-    component?: any;
-    children?: any;
+    layout?: LayoutComponent<C> | null;
+    policies?: RoutePolicyLike<C>[];
+    component?: RouteComponent<C> | Renderable;
+    children?: unknown;
 }
 
-export interface RouteProps {
+export interface RouteProps<C extends RouterContext = RouterContext> {
     path?: string;
-    component?: any;
+    component?: RouteComponent<C> | Renderable;
     root?: boolean;
     notFound?: boolean;
     forbidden?: boolean;
 }
 
-export interface RoutePolicyProps {
-    handler: RoutePolicyHandler;
+export interface RoutePolicyProps<C extends RouterContext = RouterContext> {
+    handler: RoutePolicyHandler<C>;
 }
 
-export function BrowserRouter(child: any): any;
-export function BrowserRouter(props: { children?: any }, children?: any[]): any;
-export function RouterRoot(
-    root: RouteDefinition | RouteGroupDefinition,
-    routes?: RouteDefinition | RouteGroupDefinition | Array<RouteDefinition | RouteGroupDefinition>
-): any;
-export function RouterRoot(
-    context: any,
-    root: RouteDefinition | RouteGroupDefinition,
-    routes?: RouteDefinition | RouteGroupDefinition | Array<RouteDefinition | RouteGroupDefinition>
-): any;
-export function RouterRoot(props: RouterRootProps, children?: any[]): any;
+export function BrowserRouter(child: unknown): unknown;
+export function BrowserRouter(props: { children?: unknown }, children?: unknown[]): unknown;
+
+export function RouterRoot<C extends RouterContext = RouterContext>(
+    root: RouterTreeEntry<C>,
+    routes?: RouterTreeEntry<C> | RouterTreeEntry<C>[]
+): unknown;
+export function RouterRoot<C extends RouterContext = RouterContext>(
+    context: C,
+    root: RouterTreeEntry<C>,
+    routes?: RouterTreeEntry<C> | RouterTreeEntry<C>[]
+): unknown;
+export function RouterRoot<C extends RouterContext = RouterContext>(
+    props: RouterRootProps<C>,
+    children?: unknown[]
+): unknown;
+
 export namespace RouterRoot {
-    function Context(appContext?: any): any;
+    function Context<T extends Record<string, unknown> = Record<string, unknown>>(
+        appContext?: T
+    ): RouterContext<T>;
 }
-export function useRouterContext(appContext?: any): any;
-export function RouteGroup(
+
+export function useRouterContext<T extends Record<string, unknown> = Record<string, unknown>>(
+    appContext?: T
+): RouterContext<T>;
+
+export function RouteGroup<C extends RouterContext = RouterContext>(
     rootPath: string,
-    routesOrComponent: RouteDefinition[] | any,
-    policiesOrLayout?: RoutePolicyLike[] | ((props: any) => any),
-    layout?: (props: any) => any
-): RouteGroupDefinition;
-export function RouteGroup(props: RouteGroupProps, children?: any[]): RouteGroupDefinition;
+    routesOrComponent: RouteDefinition<C>[] | RouteComponent<C> | Renderable,
+    policiesOrLayout?: RoutePolicyLike<C>[] | LayoutComponent<C> | null,
+    layout?: LayoutComponent<C> | null
+): RouteGroupDefinition<C>;
+export function RouteGroup<C extends RouterContext = RouterContext>(
+    props: RouteGroupProps<C>,
+    children?: unknown[]
+): RouteGroupDefinition<C>;
+
 export namespace RouteGroup {
-    function root(
-        routesOrComponent: RouteDefinition[] | any,
-        policiesOrLayout?: RoutePolicyLike[] | ((props: any) => any),
-        layout?: (props: any) => any
-    ): RouteGroupDefinition;
+    function root<C extends RouterContext = RouterContext>(
+        routesOrComponent: RouteDefinition<C>[] | RouteComponent<C> | Renderable,
+        policiesOrLayout?: RoutePolicyLike<C>[] | LayoutComponent<C> | null,
+        layout?: LayoutComponent<C> | null
+    ): RouteGroupDefinition<C>;
 }
-export function RoutePolicy(handler: RoutePolicyHandler): RoutePolicyDefinition;
-export function RoutePolicy(props: RoutePolicyProps, children?: any[]): RoutePolicyDefinition;
+
+export function RoutePolicy<C extends RouterContext = RouterContext>(
+    handler: RoutePolicyHandler<C>
+): RoutePolicyDefinition<C>;
+export function RoutePolicy<C extends RouterContext = RouterContext>(
+    props: RoutePolicyProps<C>,
+    children?: unknown[]
+): RoutePolicyDefinition<C>;
+
+export interface LinkNavigationLike {
+    push(path: PathTarget): void;
+}
 
 export interface LinkProps {
     to: string;
-    navigation?: Navigation;
-    [key: string]: any;
+    navigation?: LinkNavigationLike;
+    [key: string]: unknown;
 }
 
-export function Link(props: LinkProps, children: any): any;
-export function Link(props: LinkProps): any;
+export function Link(props: LinkProps, children: unknown): unknown;
+export function Link(props: LinkProps): unknown;
 
 export const BunnixRouter: {
     BrowserRouter: typeof BrowserRouter;

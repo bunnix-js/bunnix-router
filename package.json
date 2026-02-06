@@ -1,6 +1,6 @@
 {
     "name": "@bunnix/router",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "description": "Bunnix Router: decentralized, context-aware routing for Bunnix",
     "license": "ISC",
     "author": "@bunnix",

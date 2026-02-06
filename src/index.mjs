@@ -5,6 +5,14 @@ import { RoutePolicy } from './route-policy.mjs';
 import { Route } from './route.mjs';
 import { Link } from './link.mjs';
 
+/**
+ * @typedef {import('../@types/index.d.ts').Navigation} Navigation
+ * @typedef {import('../@types/index.d.ts').NavigationState} NavigationState
+ * @typedef {import('../@types/index.d.ts').RouteDefinition} RouteDefinition
+ * @typedef {import('../@types/index.d.ts').RouteGroupDefinition} RouteGroupDefinition
+ * @typedef {import('../@types/index.d.ts').RoutePolicyDefinition} RoutePolicyDefinition
+ */
+
 // Public API Exports
 export const useRouterContext = RouterRoot.Context;
 export { BrowserRouter, RouterRoot, RouteGroup, RoutePolicy, Route, Link };

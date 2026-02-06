@@ -21,6 +21,10 @@ const User = ({ navigation }) => (
 );
 
 function Layout({ routerOutlet, navigation }) {
+    Bunnix.useEffect((value) => {
+        console.log('layout path:', value.path);
+    }, navigation);
+
     return Bunnix('div', { class: 'layout' }, [
         Bunnix('nav', [
             Link({ to: '/', navigation }, 'Home'),

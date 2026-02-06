@@ -96,6 +96,57 @@ test('RouterRoot layout renders once across route changes in same group', async 
     assert.equal(tokenAfter, layoutToken);
 });
 
+test('RouterRoot keeps layout navigation state updated after route changes', async () => {
+    window.history.replaceState({}, '', '/accounts');
+    window.dispatchEvent(new window.PopStateEvent('popstate'));
+
+    const container = document.createElement('div');
+    let layoutNavigation;
+    let routeNavigation;
+
+    const Layout = ({ routerOutlet, navigation }) => {
+        layoutNavigation = navigation;
+        return Bunnix('section', { id: 'accounts-layout' }, [routerOutlet()]);
+    };
+
+    const Accounts = ({ navigation }) => {
+        routeNavigation = navigation;
+        return Bunnix('div', { id: 'accounts-list' }, 'Accounts');
+    };
+    const AccountDetails = () => Bunnix('div', { id: 'account-details' }, 'Account Details');
+
+    const App = () => RouterRoot(
+        Route.root(() => Bunnix('div', {}, 'Root')),
+        [
+            RouteGroup('/accounts', [
+                Route('/accounts', Accounts),
+                Route('/accounts/:id', AccountDetails)
+            ], [], Layout)
+        ]
+    );
+
+    Bunnix.render(
+        Bunnix(BrowserRouter, {}, Bunnix(App)),
+        container
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.ok(layoutNavigation);
+    assert.ok(routeNavigation);
+    assert.equal(layoutNavigation.get().path, '/accounts');
+    assert.deepEqual(layoutNavigation.get().params, {});
+    assert.equal(layoutNavigation.get().currentGroup, '/accounts');
+
+    routeNavigation.push('/accounts/42');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(container.querySelector('#account-details')?.textContent, 'Account Details');
+    assert.equal(layoutNavigation.get().path, '/accounts/42');
+    assert.equal(layoutNavigation.get().params.id, '42');
+    assert.equal(layoutNavigation.get().currentGroup, '/accounts');
+});
+
 test('RouterRoot does not keep list view when linking to detail route', async () => {
     window.history.replaceState({}, '', '/expenses/10');
     window.dispatchEvent(new window.PopStateEvent('popstate'));

@@ -81,9 +81,15 @@ Context always provides:
 
 ## Navigation
 
+For matched route components:
 - `navigation.path`
 - `navigation.params`
-- `navigation.group.rootPath`
+- `navigation.currentGroup`
+
+For layout components:
+- `navigation.get()` -> `{ path, params, currentGroup }`
+- `navigation.subscribe(cb)`
+- `navigation.map(fn)`
 
 Special redirects:
 

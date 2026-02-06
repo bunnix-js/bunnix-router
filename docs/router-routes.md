@@ -78,6 +78,7 @@ function UserProfile({ params }) {
 }
 ```
 Params are available on `navigation.params`.
+In layout components, read params from `navigation.get().params`.
 
 ## Matching Rules
 

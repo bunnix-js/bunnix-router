@@ -81,10 +81,11 @@ import { Link } from '@bunnix/router';
 
 /**
  * @param {Function} props.routerOutlet - A function that returns the matched route content.
- * @param {Object} props.navigation - The scoped navigation object.
+ * @param {Object} props.navigation - Reactive navigation state for the active group.
  */
 function AppLayout({ routerOutlet, navigation }) {
     return Bunnix('div', { class: 'layout' }, [
+        Bunnix('p', [`Current path: ${navigation.get().path}`]),
         Bunnix('nav', [
             Link({ to: '/', navigation }, 'Home'),
             Link({ to: '/form', navigation }, 'Form')
@@ -103,7 +104,7 @@ function AppLayout({ routerOutlet, navigation }) {
 
 
 ### Consuming Navigation
-Matched components and layouts receive the `navigation` object.
+Matched route components receive unwrapped `navigation` values. Layouts receive reactive navigation state.
 
 ```javascript
 function Home({ navigation }) {
@@ -118,12 +119,19 @@ function Home({ navigation }) {
 
 ### Navigation Object Reference
 
+For matched route components:
 - `navigation.push(path)`: Navigates to a new URL.
 - `navigation.replace(path)`: Replaces the current history entry.
 - `navigation.back(fallback?)`: Goes back in history or to the fallback (defaults to `rootPath`).
 - `navigation.path`: Current path string.
 - `navigation.params`: Current route params.
-- `navigation.group.rootPath`: Current group root path.
+- `navigation.currentGroup`: Current group root path.
+
+For layout components:
+- `navigation.get()`: Returns `{ path, params, currentGroup }`.
+- `navigation.subscribe(cb)`: Subscribes to path/params/group changes.
+- `navigation.map(fn)`: Creates a derived state from navigation state.
+- `navigation.push(path)`, `navigation.replace(path)`, `navigation.back(fallback?)`.
 
 ## Components
 
@@ -132,3 +140,13 @@ function Home({ navigation }) {
 - `RouteGroup`: Defines grouped routes with layouts and policies.
 - `RoutePolicy`: Guards for group routes.
 - `Link`: A helper component for declarative navigation: `Link({ to: '/path', navigation }, 'Label')`.
+
+## IntelliSense
+
+For best auto-completion in IDEs, prefer named imports from `@bunnix/router`:
+
+```javascript
+import { BrowserRouter, RouterRoot, RouteGroup, RoutePolicy, Route, Link } from '@bunnix/router';
+```
+
+The `Router` proxy export supports runtime aliases, but named imports provide stronger static completion.

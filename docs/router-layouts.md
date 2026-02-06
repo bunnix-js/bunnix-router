@@ -5,7 +5,7 @@ title: Layouts
 
 # Layouts
 
-Layouts let you wrap routes with persistent UI such as headers or sidebars. Layout components receive `routerOutlet`, `navigation`, and any matched route params. Layouts are defined per `RouteGroup`, so each group can have its own wrapper.
+Layouts let you wrap routes with persistent UI such as headers or sidebars. Layout components receive `routerOutlet`, reactive `navigation` state, and any matched route params. Layouts are defined per `RouteGroup`, so each group can have its own wrapper.
 
 ## Layout Example
 
@@ -14,8 +14,13 @@ import Bunnix from '@bunnix/core';
 import { Link } from '@bunnix/router';
 
 function AppLayout({ routerOutlet, navigation, accountId }) {
+    Bunnix.useEffect((value) => {
+        console.log('Layout navigation:', value.path, value.currentGroup);
+    }, navigation);
+
     return Bunnix('div', { class: 'layout' }, [
         Bunnix('header', ['Account: ', accountId]),
+        Bunnix('small', ['Current path: ', navigation.get().path]),
         Bunnix('nav', [
             Link({ to: '/', navigation }, 'Home'),
             Link({ to: '/settings', navigation }, 'Settings')
