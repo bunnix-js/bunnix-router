@@ -5,7 +5,8 @@ title: Navigation
 
 # Navigation
 
-Matched components and layouts receive a scoped `navigation` object.
+Matched route components receive an unwrapped `navigation` object. Layouts receive
+a reactive navigation state object with `get/subscribe/map`.
 
 ## Navigation API
 
@@ -14,7 +15,7 @@ Matched components and layouts receive a scoped `navigation` object.
 - `navigation.back(fallback?)`
 - `navigation.path`
 - `navigation.params`
-- `navigation.group.rootPath`
+- `navigation.currentGroup`
 
 ## Using navigation in a Component
 
@@ -38,6 +39,25 @@ const Nav = ({ navigation }) => (
         Link({ to: '/profile', navigation }, 'Profile')
     ])
 );
+```
+
+## Layout Navigation State
+
+Layouts receive a state-like `navigation` value:
+
+- `navigation.get()` returns `{ path, params, currentGroup }`
+- `navigation.subscribe(cb)` reacts to navigation updates
+- `navigation.map(fn)` derives state from navigation
+- `navigation.push/replace/back` still work for navigation actions
+
+```javascript
+function DashboardLayout({ navigation, routerOutlet }) {
+    Bunnix.useEffect((value) => {
+        console.log('Layout path changed:', value.path);
+    }, navigation);
+
+    return Bunnix('main', [routerOutlet()]);
+}
 ```
 
 ## Redirects in Policies

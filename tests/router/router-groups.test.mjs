@@ -81,7 +81,7 @@ test('Groups render their own layouts and expose navigation state', async () => 
 
     const GroupOne = ({ navigation: nav }) => {
         navigation = nav;
-        return Bunnix('div', {}, `${nav.path}-${nav.params.id}-${nav.group.rootPath}`);
+        return Bunnix('div', {}, `${nav.path}-${nav.params.id}-${nav.currentGroup}`);
     };
     const GroupTwo = () => Bunnix('div', {}, 'GroupTwo');
 

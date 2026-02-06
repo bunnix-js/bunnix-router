@@ -12,9 +12,12 @@ Bunnix Router is decentralized and context-aware. Routes are defined with `Route
 - `BrowserRouter`: wraps your app and enables routing.
 - `RouterRoot`: defines the root router tree.
 - `RouteGroup`: groups routes with shared policies and layouts.
+- `navigation` behavior: route components get unwrapped values, layouts get reactive state.
 - `RoutePolicy`: guard/redirect logic for groups.
 - `Route`: route definition helper (`<Route path="/path" component={Component} />`).
 - `Link`: declarative navigation.
+
+For editor auto-completion, prefer named imports over the `Router` proxy aliases.
 
 ## Read Next
 

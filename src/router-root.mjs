@@ -188,8 +188,12 @@ export const RouterRoot = (...args) => {
 
     incrementRouterCount();
 
-    const matchedParams = Bunnix.useState({});
-    const groupRootPath = Bunnix.useState(entries[0]?.group?.rootPath || '/');
+    const rootGroupPath = entries[0]?.group?.rootPath || '/';
+    const navigationState = Bunnix.useState({
+        path: _routeState.get().path,
+        params: {},
+        currentGroup: rootGroupPath
+    });
 
     const rootStart = document.createComment('bunnix-router-root:start');
     const rootEnd = document.createComment('bunnix-router-root:end');
@@ -219,23 +223,30 @@ export const RouterRoot = (...args) => {
         return path;
     };
 
+    const getNavigationValue = () => navigationState.get();
+    const setNavigationValue = ({ path, params = {}, currentGroup = rootGroupPath }) => {
+        navigationState.set({ path, params, currentGroup });
+    };
+
     let forcedPath = null;
     let forcedRoute = null;
 
     let applyMatch = null;
     let suppressHistoryRecord = false;
 
-    const navigation = {
+    const navigationActions = {
         push: (path) => {
             const resolvedPath = resolvePath(path);
-            if (useGroupHistory && navigation.path && navigation.path !== resolvedPath) {
-                recordHistory(navigation.group.rootPath, navigation.path);
+            const current = getNavigationValue();
+            if (useGroupHistory && current.path && current.path !== resolvedPath) {
+                recordHistory(current.currentGroup, current.path);
             }
             navigate(resolvedPath);
         },
         replace: (path) => {
             const resolvedPath = resolvePath(path);
-            if (resolvedPath === navigation.path) {
+            const current = getNavigationValue();
+            if (resolvedPath === current.path) {
                 return;
             }
             if ((path === Route.forbidden || resolvedPath === Route._FORBIDDEN) && forbiddenRouteDef) {
@@ -250,11 +261,11 @@ export const RouterRoot = (...args) => {
             }
             if ((path === Route.forbidden || resolvedPath === Route._FORBIDDEN) && forbiddenRouteDef) {
                 const params = {};
-                navigation.path = Route._FORBIDDEN;
-                navigation.params = params;
-                navigation.group.rootPath = entries[0]?.group?.rootPath || '/';
-                matchedParams.set(params);
-                groupRootPath.set(navigation.group.rootPath);
+                setNavigationValue({
+                    path: Route._FORBIDDEN,
+                    params,
+                    currentGroup: rootGroupPath
+                });
                 if (activeGroup !== null) {
                     activeGroup = null;
                     setLayout(null, params);
@@ -262,33 +273,50 @@ export const RouterRoot = (...args) => {
                 renderVersion += 1;
                 const content = forbiddenRouteDef.component ?? forbiddenRouteDef.render ?? null;
                 pendingVdom = typeof content === 'function'
-                    ? Bunnix(content, { navigation, context: resolvedContext })
+                    ? Bunnix(content, { navigation: createRouteNavigation(), context: resolvedContext })
                     : content;
                 flushPending(false, renderVersion);
             }
         },
-        back: (fallback = navigation.group.rootPath) => {
+        back: (fallback = getNavigationValue().currentGroup) => {
             if (!useGroupHistory) {
                 back(fallback);
                 return;
             }
-            const history = groupHistory.get(navigation.group.rootPath) ?? [];
+            const currentGroup = getNavigationValue().currentGroup;
+            const history = groupHistory.get(currentGroup) ?? [];
             if (history.length > 0) {
                 const previous = history.pop();
-                groupHistory.set(navigation.group.rootPath, history);
+                groupHistory.set(currentGroup, history);
                 suppressHistoryRecord = true;
                 navigate(previous, { replace: true });
             } else {
                 navigate(fallback, { replace: true });
             }
-        },
-        currentPath: _routeState.map(r => r.path),
-        rootPath: entries[0]?.group?.rootPath || '/',
-        group: {
-            rootPath: groupRootPath.get()
-        },
-        path: _routeState.get().path,
-        params: matchedParams.get()
+        }
+    };
+
+    const createRouteNavigation = () => {
+        const current = getNavigationValue();
+        return {
+            push: navigationActions.push,
+            replace: navigationActions.replace,
+            back: navigationActions.back,
+            rootPath: rootGroupPath,
+            path: current.path,
+            params: current.params,
+            currentGroup: current.currentGroup
+        };
+    };
+
+    const layoutNavigation = {
+        get: () => navigationState.get(),
+        subscribe: (cb) => navigationState.subscribe(cb),
+        map: (fn) => navigationState.map(fn),
+        push: navigationActions.push,
+        replace: navigationActions.replace,
+        back: navigationActions.back,
+        rootPath: rootGroupPath
     };
 
     const removeBetween = (startNode, endNode) => {
@@ -318,7 +346,7 @@ export const RouterRoot = (...args) => {
         outletFragment.append(outletStart, outletEnd);
 
         const routerOutlet = () => outletFragment;
-        const layoutVdom = Bunnix(layout, { routerOutlet, navigation, context: resolvedContext, ...params });
+        const layoutVdom = Bunnix(layout, { routerOutlet, navigation: layoutNavigation, context: resolvedContext, ...params });
         const layoutDom = bunnixToDOM(layoutVdom);
 
         removeBetween(rootStart, rootEnd);
@@ -349,6 +377,7 @@ export const RouterRoot = (...args) => {
 
     const runPolicies = (policies, path) => {
         for (const policy of policies) {
+            const navigation = createRouteNavigation();
             if (typeof policy === 'function') {
                 policy({ context: resolvedContext, navigation });
             } else if (policy && typeof policy.handler === 'function') {
@@ -412,8 +441,9 @@ export const RouterRoot = (...args) => {
     };
 
     applyMatch = () => {
-        const previousPath = navigation.path;
-        const previousGroupRoot = navigation.group.rootPath;
+        const previous = getNavigationValue();
+        const previousPath = previous.path;
+        const previousGroupRoot = previous.currentGroup;
         const path = forcedRoute ? Route._FORBIDDEN : (forcedPath ?? _routeState.get().path);
         forcedPath = null;
         let { route, group, params } = forcedRoute
@@ -433,16 +463,13 @@ export const RouterRoot = (...args) => {
             }
         }
 
-        navigation.path = path;
-        navigation.params = params;
-        navigation.group.rootPath = group?.rootPath || entries[0]?.group?.rootPath || '/';
+        const currentGroup = group?.rootPath || rootGroupPath;
+        setNavigationValue({ path, params, currentGroup });
 
         if (!suppressHistoryRecord && useGroupHistory && previousPath && previousPath !== path) {
-            recordHistory(previousGroupRoot || navigation.group.rootPath, previousPath);
+            recordHistory(previousGroupRoot || currentGroup, previousPath);
         }
         suppressHistoryRecord = false;
-        matchedParams.set(params);
-        groupRootPath.set(navigation.group.rootPath);
 
         const rootPolicies = entries[0]?.group?.policies || [];
         if (runPolicies(rootPolicies, path)) return;
@@ -464,14 +491,14 @@ export const RouterRoot = (...args) => {
         }
 
         if (route.then) {
-            queueMicrotask(() => route.then(navigation, params));
+            queueMicrotask(() => route.then(createRouteNavigation(), params));
             return;
         }
 
         const content = route.component ?? route.render ?? null;
         renderVersion += 1;
         pendingVdom = typeof content === 'function'
-            ? Bunnix(content, { ...params, navigation, context: resolvedContext })
+            ? Bunnix(content, { ...params, navigation: createRouteNavigation(), context: resolvedContext })
             : content;
         flushPending(false, renderVersion);
     };
