@@ -1,6 +1,6 @@
 {
     "name": "@bunnix/router",
-    "version": "0.9.1",
+    "version": "0.10.0",
     "description": "Bunnix Router: decentralized, context-aware routing for Bunnix",
     "license": "ISC",
     "author": "@bunnix",
@@ -30,10 +30,10 @@
         "test": "node --test --import ./tests/setup-dom.mjs"
     },
     "peerDependencies": {
-        "@bunnix/core": "^0.9.0"
+        "@bunnix/core": "^0.10.0"
     },
     "devDependencies": {
-        "@bunnix/core": "0.9.0",
+        "@bunnix/core": "0.10.0",
         "jsdom": "^26.0.0"
     }
 }
